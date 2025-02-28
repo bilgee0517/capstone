@@ -7,7 +7,7 @@ import os
 import json
 
 class LogitLensAnalyzer:
-    def __init__(self, peft_model=None, device="cpu", top_k=5, num_tokens=10):
+    def __init__(self, peft_model=None, device="cpu", top_k=5, num_tokens=20):
         """
         Initializes the Logit Lens analysis for NLLB models.
         """
@@ -174,7 +174,7 @@ def save_comparison_results(similarities, base_model_text, lora_text,  base_top_
 def main(args):
     base_model_analyzer = LogitLensAnalyzer() 
     lora_model_analyzer = LogitLensAnalyzer(peft_model=args.model_name)
-    input_text = 'Даниус хэлэхдээ "Яг одоо бид юу ч хийхгүй байгаа. Бид түүний хамгийн ойрын хамтрагчтай ярьж, цахим шуудан илгээсэн ба маш нөхөрсөг хариулт хүлээн авсан. Одоохондоо тэр л хангалттай" гэв.'
+    input_text = "Жош байшингийн засварын ажлыг туршиж үзэхээр шийджээ. Тэрээр байшин худалдаж авахад 80,000 доллар зарцуулж, дараа нь засвар хийхэд 50,000 доллар зарцуулжээ. Ингэснээр байшингийн үнэ цэнийг 150% -иар нэмэгдүүлсэн. Тэр хэр их ашиг олсон бэ?"
     # Extract hidden states for both models while preserving autoregressive behavior
     base_hidden_states, base_generated_text = base_model_analyzer.extract_logits_autoregressive(input_text)
     lora_hidden_states, lora_generated_text = lora_model_analyzer.extract_logits_autoregressive(input_text)
