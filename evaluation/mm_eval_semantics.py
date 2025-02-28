@@ -6,14 +6,11 @@ from peft import PeftModel
 import json
 from tqdm import tqdm
 import re
-import nltk
 from huggingface_hub import login
-
-nltk.download('punkt')  # Needed for sentence tokenization
 
 def translate_text(text, tokenizer, model, src_lang, device):
     """
-    Translates text from the source language using the NLLB model.
+    Translates text using the NLLB model.
     """
     inputs = tokenizer(text, return_tensors="pt").to(device)
     with torch.no_grad():
@@ -21,45 +18,48 @@ def translate_text(text, tokenizer, model, src_lang, device):
             **inputs,
             max_length=256
         )
-    return tokenizer.decode(translated_tokens[0], skip_special_tokens=True)
+    translated_text = tokenizer.decode(translated_tokens[0], skip_special_tokens=True)
+    return translated_text
 
 def process_with_llama(prompt, tokenizer, model, device):
     """
-    Processes the prompt using LLaMA and ensures only the answer is returned.
+    Processes the prompt using LLaMA and ensures only the generated output is returned.
     """
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
     
     with torch.no_grad():
         response_tokens = model.generate(
             **inputs,
-            max_new_tokens=1024,
+            max_new_tokens=10,
             do_sample=False
         )
     
     response_text = tokenizer.decode(response_tokens[0], skip_special_tokens=True)
 
+    # Remove prompt if included in the response
+    response_text = response_text.replace(prompt, "").strip()
+    
     return response_text
 
-def split_long_question(question, max_length=80):
+def clean_predicted_label(prediction):
     """
-    Splits long questions into sentences and returns a list of sentences.
+    Cleans the predicted label, ensuring it is only A, B, C, or D.
     """
-    sentences = nltk.sent_tokenize(question)
-    return sentences if sum(len(s) for s in sentences) > max_length else [question]
-
-def extract_numeric_answer(response):
-    """
-    Extracts only the numeric answer from the LLaMA response using delimiters.
-    """
-    match = re.search(r"///(\d+(\.\d+)?)///", response)  # Extract number inside delimiters
+    match = re.search(r"\b([A-D])\b", prediction)  # Extracts only A, B, C, or D
     return match.group(1) if match else "INVALID"
 
 def load_questions(filename):
     """
-    Loads mathematical word problems from a JSON file.
+    Load multiple-choice cloze questions from a JSON file.
     """
     with open(filename, 'r', encoding='utf-8') as file:
         return json.load(file)
+
+def fill_in_the_blank(question, choice_text):
+    """
+    Replaces the blank ('_') in the question with a given choice.
+    """
+    return question.replace("_", choice_text)
 
 def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -85,51 +85,46 @@ def main(args):
     predictions = []
     correct_predictions = 0
 
-    for i, question_data in tqdm(enumerate(questions), total=len(questions)):
+    for i, question_data in tqdm(enumerate(questions[:10]), total=len(questions[:10])):
         original_question = question_data['question']
-        correct_answer = question_data['answer']
+        choices = question_data['choices']
+        answer_key = question_data['answerKey']
 
-        # Step 1: **Break down long questions into sentences**
-        question_sentences = split_long_question(original_question)
-        
-        # Step 2: **Translate each sentence separately**
-        translated_sentences = [
-            translate_text(sentence, nllb_tokenizer, nllb_model, args.src_lang, device) 
-            for sentence in question_sentences
-        ]
+        # Create cloze-style questions by filling in the blank with each choice
+        filled_questions = {choice['label']: fill_in_the_blank(original_question, choice['text']) for choice in choices}
 
-        # Step 3: **Reconstruct the full translated question**
-        translated_question = " ".join(translated_sentences)
+        # Translate each filled-in question and its choice
+        translated_filled_questions = {label: translate_text(filled_q, nllb_tokenizer, nllb_model, args.src_lang, device) 
+                                       for label, filled_q in filled_questions.items()}
 
-        # Construct the strict prompt with delimiters
-        instruction = (
-            "You are an AI problem solver working with noisy data. Read the problem carefully, correct any variations, and answer logically.\n"
-            "Output the final answer in the format: ///YOUR NUMBER///."
-        )
+        instruction = "You are a helpful AI assistant. Read the multiple-choice cloze question and select the best option. Answer with only the correct letter (A, B, C, or D)."
 
         # Construct LLaMA prompt
-        prompt = f"{instruction}\n\nProblem: {translated_question}\n\n"
+        prompt = f"{instruction}\n\n"
+        for label, translated_filled_q in translated_filled_questions.items():
+            prompt += f"{label}: {translated_filled_q}\n"
+
+        prompt += "Answer (A, B, C, or D) ONLY: "
 
         # Get LLaMA's response
         llama_response = process_with_llama(prompt, llama_tokenizer, llama_model, device).strip()
-        print(llama_response)
-        # Extract only the numeric part using regex
-        predicted_answer = extract_numeric_answer(llama_response)
+        
+        # Extract the predicted answer label
+        predicted_label = clean_predicted_label(llama_response)
 
         # Determine if prediction is correct
-        is_correct = (predicted_answer == correct_answer)
+        is_correct = (predicted_label == answer_key)
         if is_correct:
             correct_predictions += 1
-
         print(correct_predictions)
+
         predictions.append({
-            "model_name": args.llama_model_name,
-            "original_question": original_question,
-            "split_sentences": question_sentences,
-            "translated_question": translated_question,
-            "ground_truth": correct_answer,
-            "prediction": predicted_answer,
-            "raw_llama_response": llama_response,
+            "question": original_question,
+            "filled_questions": filled_questions,
+            "translated_questions": translated_filled_questions,
+            "choices": {choice["label"]: choice["text"] for choice in choices},
+            "ground_truth": answer_key,
+            "prediction": predicted_label,
             "is_correct": is_correct
         })
 
@@ -146,7 +141,7 @@ def main(args):
         json.dump(predictions, f, ensure_ascii=False, indent=4)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Solve mathematical word problems using NLLB and LLaMA.")
+    parser = argparse.ArgumentParser(description="Process multiple-choice cloze questions using NLLB and LLaMA models.")
     parser.add_argument('--nllb_model_name', type=str, required=True, help="Name or path of the NLLB model.")
     parser.add_argument('--llama_model_name', type=str, required=True, help="Name or path of the LLaMA model.")
     parser.add_argument('--src_lang', type=str, required=True, help="Source language code (e.g., 'khk_Cyrl').")
