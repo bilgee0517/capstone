@@ -63,18 +63,27 @@ def disable_lora_layers(model, disable_type):
 
 
 
-def translate_batch(model, tokenizer, texts, max_length, device):
+def translate_batch(args, model, tokenizer, texts, max_length, device):
     """
     Translate a batch of texts using the specified model and tokenizer.
     Ensures deterministic output by disabling sampling.
     """
     inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_length).to(device)
-    with torch.no_grad():
-        output_tokens = model.generate(
-            **inputs,
-            max_length=max_length,
-            use_cache=True  # Enables faster decoding
-        )
+    if args.model_name: 
+        with torch.no_grad():
+            output_tokens = model.generate(
+                **inputs,
+                max_length=max_length,
+                use_cache=True  # Enables faster decoding
+            )
+    else:
+        with torch.no_grad():
+            output_tokens = model.generate(
+                **inputs,
+                max_length=max_length,
+                use_cache=True,  # Enables faster decoding
+                forced_bos_token_id=256047
+            )
     return tokenizer.batch_decode(output_tokens, skip_special_tokens=True)
 
 
@@ -107,7 +116,7 @@ def evaluate_model(args):
         src_texts = batch["sentence_khk_Cyrl"]  # Extract source texts correctly
         ref_texts = batch["sentence_eng_Latn"]  # Extract references correctly
 
-        translated_texts = translate_batch(model, tokenizer, src_texts, args.max_length, device)
+        translated_texts = translate_batch(args, model, tokenizer, src_texts, args.max_length, device)
 
         predictions.extend(translated_texts)
         references.extend([[ref] for ref in ref_texts])  # sacrebleu expects a list of lists
