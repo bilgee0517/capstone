@@ -5,11 +5,8 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausa
 from peft import PeftModel
 import json
 from tqdm import tqdm
-import re
-import nltk
 from huggingface_hub import login
-
-nltk.download('punkt')  # Needed for sentence tokenization
+import re
 
 def translate_text(text, tokenizer, model, src_lang, device):
     """
@@ -25,38 +22,33 @@ def translate_text(text, tokenizer, model, src_lang, device):
 
 def process_with_llama(prompt, tokenizer, model, device):
     """
-    Processes the prompt using LLaMA and ensures only the answer is returned.
+    Processes the prompt using the LLaMA model to generate a response.
+    Extracts the answer inside \boxed{} while ensuring the response does not include the prompt.
     """
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
     
     with torch.no_grad():
         response_tokens = model.generate(
             **inputs,
-            max_new_tokens=1024,
+            max_new_tokens=1024,  # Allow space for full reasoning
             do_sample=False
         )
     
     response_text = tokenizer.decode(response_tokens[0], skip_special_tokens=True)
 
-    return response_text
+    # Remove the prompt if it's included in the response
+    if response_text.startswith(prompt):
+        response_text = response_text[len(prompt):].strip()
 
-def split_long_question(question, max_length=80):
-    """
-    Splits long questions into sentences and returns a list of sentences.
-    """
-    sentences = nltk.sent_tokenize(question)
-    return sentences if sum(len(s) for s in sentences) > max_length else [question]
+    # Extract only the answer inside \boxed{}
+    match = re.search(r"\\boxed\{(.*?)\}", response_text, re.DOTALL)
+    extracted_answer = match.group(1).strip() if match else "INVALID"  # Return extracted answer if found
 
-def extract_numeric_answer(response):
-    """
-    Extracts only the numeric answer from the LLaMA response using delimiters.
-    """
-    match = re.search(r"///(\d+(\.\d+)?)///", response)  # Extract number inside delimiters
-    return match.group(1) if match else "INVALID"
+    return response_text, extracted_answer
 
 def load_questions(filename):
     """
-    Loads mathematical word problems from a JSON file.
+    Load open-ended questions from a JSON file.
     """
     with open(filename, 'r', encoding='utf-8') as file:
         return json.load(file)
@@ -68,14 +60,17 @@ def main(args):
     HF_API_TOKEN = os.getenv("HF_API_TOKEN")
     login(token=HF_API_TOKEN)
 
+    correct_predictions = 0  # Initialize counter
+
+
     # Load NLLB model
     print("Loading NLLB model...")
     base_model = AutoModelForSeq2SeqLM.from_pretrained("facebook/nllb-200-distilled-1.3B").to(device)
     nllb_tokenizer = AutoTokenizer.from_pretrained(args.nllb_model_name, src_lang=args.src_lang)
     nllb_model = PeftModel.from_pretrained(base_model, args.nllb_model_name).to(device)
     
-    # Load LLaMA model
-    print("Loading LLaMA model...")
+    # Load DeepSeek model
+    print("Loading DeepSeek LLaMA model...")
     llama_tokenizer = AutoTokenizer.from_pretrained(args.llama_model_name)
     llama_model = AutoModelForCausalLM.from_pretrained(args.llama_model_name).to(device)
 
@@ -83,41 +78,33 @@ def main(args):
     questions = load_questions(args.input_file)
 
     predictions = []
-    correct_predictions = 0
 
     for i, question_data in tqdm(enumerate(questions), total=len(questions)):
         original_question = question_data['question']
-        correct_answer = question_data['answer']
+        ground_truth = question_data.get('answer', 'N/A')  # Ensure there's an answer key
 
-        # Step 1: **Break down long questions into sentences**
-        question_sentences = split_long_question(original_question)
-        
-        # Step 2: **Translate each sentence separately**
-        translated_sentences = [
-            translate_text(sentence, nllb_tokenizer, nllb_model, args.src_lang, device) 
-            for sentence in question_sentences
-        ]
+        # Step 1: **Translate question**
+        translated_question = translate_text(original_question, nllb_tokenizer, nllb_model, args.src_lang, device)
 
-        # Step 3: **Reconstruct the full translated question**
-        translated_question = " ".join(translated_sentences)
-
-        # Construct the strict prompt with delimiters
+        # Step 2: **Construct the prompt**
         instruction = (
-            "You are an AI problem solver working with noisy data. Read the problem carefully, correct any variations, and answer logically.\n"
-            "Output the final answer in the format: ///YOUR NUMBER///."
+            "You are a AI assistant specialized in solving translated math problems. Expect bad translation but solve it with best assumptions"
+            "Solve the problem by first rewriting the question to yourself. Then, explicitly format ONLY YOUR FINAL ANSWER as follows:\n"
+            "Answer:\\boxed{YOUR_ANSWER}"
         )
 
-        # Construct LLaMA prompt
-        prompt = f"{instruction}\n\nProblem: {translated_question}\n\n"
+        prompt = f"{instruction}\n\nTranslated Problem: {translated_question}"
 
-        # Get LLaMA's response
-        llama_response = process_with_llama(prompt, llama_tokenizer, llama_model, device).strip()
-        print(llama_response)
-        # Extract only the numeric part using regex
-        predicted_answer = extract_numeric_answer(llama_response)
+        # Step 3: **Generate response**
+        llama_response, extracted_answer = process_with_llama(prompt, llama_tokenizer, llama_model, device)
+        
+        print(f"{llama_response}, EXTRACTED_ANSWER:{extracted_answer}")
+        if not extracted_answer.isdigit():
+            print(f"Skipping question {i+1}: Extracted answer is not an integer -> {extracted_answer}")
+            continue  # Skip this iteration
 
-        # Determine if prediction is correct
-        is_correct = (predicted_answer == correct_answer)
+            # Compare extracted answer with ground truth
+        is_correct = (int(extracted_answer) == int(ground_truth))
         if is_correct:
             correct_predictions += 1
 
@@ -125,30 +112,21 @@ def main(args):
         predictions.append({
             "model_name": args.llama_model_name,
             "original_question": original_question,
-            "split_sentences": question_sentences,
             "translated_question": translated_question,
-            "ground_truth": correct_answer,
-            "prediction": predicted_answer,
             "raw_llama_response": llama_response,
-            "is_correct": is_correct
+            "prediction": extracted_answer,  # Extracted \boxed{} answer
         })
-
-    # Calculate accuracy
-    total_questions = len(questions)
-    accuracy = (correct_predictions / total_questions) * 100
-
-    print(f"Total Questions: {total_questions}")
-    print(f"Correct Predictions: {correct_predictions}")
-    print(f"Accuracy: {accuracy:.2f}%")
-
+    
     # Save predictions
     with open(args.output_file, 'w', encoding='utf-8') as f:
         json.dump(predictions, f, ensure_ascii=False, indent=4)
 
+    print(f"Results saved to {args.output_file}")
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Solve mathematical word problems using NLLB and LLaMA.")
+    parser = argparse.ArgumentParser(description="Solve open-ended math problems using NLLB and DeepSeek-R1.")
     parser.add_argument('--nllb_model_name', type=str, required=True, help="Name or path of the NLLB model.")
-    parser.add_argument('--llama_model_name', type=str, required=True, help="Name or path of the LLaMA model.")
+    parser.add_argument('--llama_model_name', type=str, required=True, help="Name or path of the DeepSeek-R1 model.")
     parser.add_argument('--src_lang', type=str, required=True, help="Source language code (e.g., 'khk_Cyrl').")
     parser.add_argument('--input_file', type=str, required=True, help="Path to the input JSON file containing questions.")
     parser.add_argument('--output_file', type=str, required=True, help="Path to save the output JSON file with predictions.")

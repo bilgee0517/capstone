@@ -85,7 +85,7 @@ def main(args):
     predictions = []
     correct_predictions = 0
 
-    for i, question_data in tqdm(enumerate(questions[:10]), total=len(questions[:10])):
+    for i, question_data in tqdm(enumerate(questions), total=len(questions)):
         original_question = question_data['question']
         choices = question_data['choices']
         answer_key = question_data['answerKey']
@@ -117,6 +117,8 @@ def main(args):
         if is_correct:
             correct_predictions += 1
         print(correct_predictions)
+
+        print(llama_response)
 
         predictions.append({
             "question": original_question,

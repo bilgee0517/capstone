@@ -13,8 +13,8 @@ import numpy as np
 from nltk.tokenize import word_tokenize  # Import tokenizer
 import nltk
 
-nltk.download('punkt_tab')
-nltk.download('wordnet')
+nltk.download("punkt")
+nltk.download("wordnet")
 
 # Fix randomness for reproducibility
 torch.manual_seed(42)
@@ -23,6 +23,45 @@ random.seed(42)
 
 # Load the FLORES-200 dataset
 dataset = load_dataset("facebook/flores", "eng_Latn-khk_Cyrl", split="devtest")
+
+def disable_lora_layers(model, disable_type):
+    """
+    Disables LoRA adapters in a subset of decoder layers by setting LoRA weights to zero.
+
+    :param model: The LoRA fine-tuned model (PEFT)
+    :param disable_type: Which layers to disable LoRA for ('early', 'middle', 'late', or 'none')
+    """
+    num_decoder_layers = len(model.base_model.model.model.decoder.layers)  # Get total decoder layers
+
+    if disable_type == "early":
+        disable_range = range(0, num_decoder_layers // 3)  # First 1/3 of layers
+    elif disable_type == "middle":
+        disable_range = range(num_decoder_layers // 3, 2 * num_decoder_layers // 3)  # Middle 1/3
+    elif disable_type == "late":
+        disable_range = range(2 * num_decoder_layers // 3, num_decoder_layers)  # Last 1/3
+    else:
+        return  # 'none' -> Do nothing
+
+    # 🔹 Step 1: Disable LoRA in Selected Decoder Layers
+    for layer_idx in disable_range:
+        for attn_type in ["self_attn", "encoder_attn"]:  # Self-attention + Encoder-Decoder attention
+            for proj in ["q_proj", "v_proj"]:  # Attention projections
+                try:
+                    attn_layer = getattr(model.base_model.model.model.decoder.layers[layer_idx], attn_type)
+                    
+                    # Zero out LoRA weights
+                    with torch.no_grad():
+                        getattr(attn_layer, proj).lora_A.default.weight.zero_()
+                        getattr(attn_layer, proj).lora_B.default.weight.zero_()
+
+                    print(f"❌ LoRA Disabled in {attn_type}.{proj} (Layer {layer_idx})")
+
+                except AttributeError:
+                    print(f"⚠️ LoRA adapter not found in Layer {layer_idx}, {attn_type}.{proj} (Skipping)")
+
+    print(f"✅ Disabled LoRA in {disable_type} decoder layers (Layers: {list(disable_range)})")
+
+
 
 def translate_batch(model, tokenizer, texts, max_length, device):
     """
@@ -38,17 +77,24 @@ def translate_batch(model, tokenizer, texts, max_length, device):
         )
     return tokenizer.batch_decode(output_tokens, skip_special_tokens=True)
 
+
 def evaluate_model(args):
     """
     Evaluate the translation model on the provided dataset and compute BLEU, chrF++, and METEOR scores.
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    print("Loading NLLB model...")
+    print("🚀 Loading NLLB model...")
     base_model = AutoModelForSeq2SeqLM.from_pretrained("facebook/nllb-200-distilled-1.3B").to(device)
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name, src_lang=args.src_lang)
-    model = PeftModel.from_pretrained(base_model, args.model_name).to(device)
-    
+    tokenizer = AutoTokenizer.from_pretrained("facebook/nllb-200-distilled-1.3B", src_lang=args.src_lang)
+
+    if args.model_name:
+        model = PeftModel.from_pretrained(base_model, args.model_name).to(device)
+        if args.freeze_layers != "none":
+            disable_lora_layers(model, args.freeze_layers)  # Apply layer-wise freezing
+    else:
+        model = base_model
+
     batch_size = args.batch_size
     num_samples = len(dataset)
 
@@ -68,32 +114,31 @@ def evaluate_model(args):
 
     # Compute BLEU score
     bleu = sacrebleu.corpus_bleu(predictions, references, tokenize="intl")
-    print(f"BLEU Score: {bleu.score:.2f}")
+    print(f"🎯 BLEU Score: {bleu.score:.2f}")
 
     # Compute chrF++ score
     chrf = sacrebleu.corpus_chrf(predictions, references, beta=2)
-    print(f"chrF++ Score: {chrf.score:.2f}")
+    print(f"📊 chrF++ Score: {chrf.score:.2f}")
     
-    #Compute METEOR score
-
-    # Tokenize both references and predictions
+    # Compute METEOR score
     meteor_scores = [
         meteor_score([word_tokenize(ref[0])], word_tokenize(pred))  # Convert to tokenized lists
         for ref, pred in zip(references, predictions)
     ]
 
     avg_meteor_score = sum(meteor_scores) / len(meteor_scores)
-    print(f"METEOR Score: {avg_meteor_score:.4f}")
+    print(f"📌 METEOR Score: {avg_meteor_score:.4f}")
 
     results = {
         "Model Name": args.model_name,
+        "Frozen Layers": args.freeze_layers,
         "BLEU": bleu.score,
         "chrF++": chrf.score,
         "METEOR": avg_meteor_score,
         "Predictions": predictions
     }
 
-    output_file = "flores_results.json"
+    output_file = "results/flores_results.json"
     
     if os.path.exists(output_file):
         with open(output_file, "r") as f:
@@ -105,17 +150,26 @@ def evaluate_model(args):
     with open(output_file, "w") as f:
         json.dump(existing_data, f, ensure_ascii=False, indent=4)
     
-    print(f"Results saved to {output_file}")
+    print(f"📂 Results saved to {output_file}")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate a translation model using the FLORES-200 dataset.")
-    parser.add_argument("--model_name", type=str, required=True, help="Name or path of the pre-trained model.")
+    parser.add_argument("--model_name", type=str, help="Name or path of the fine-tuned LoRA model.")
     parser.add_argument("--src_lang", type=str, default="khk_Cyrl", help="Source language code (e.g., 'eng_Latn').")
     parser.add_argument("--max_length", type=int, default=256, help="Maximum length for the generated translations.")
     parser.add_argument("--batch_size", type=int, default=1, help="Batch size for translation speed optimization.")
+    parser.add_argument(
+        "--freeze_layers",
+        type=str,
+        choices=["none", "early", "middle", "late"],
+        default="none",
+        help="Freeze specific decoder layers: 'none' (default), 'early', 'middle', 'late'."
+    )
     args = parser.parse_args()
 
     evaluate_model(args)
+
 
 if __name__ == "__main__":
     main()
