@@ -15,6 +15,7 @@ import nltk
 
 nltk.download("punkt")
 nltk.download("wordnet")
+nltk.download('punkt_tab')
 
 # Fix randomness for reproducibility
 torch.manual_seed(42)
@@ -39,6 +40,10 @@ def disable_lora_layers(model, disable_type):
         disable_range = range(num_decoder_layers // 3, 2 * num_decoder_layers // 3)  # Middle 1/3
     elif disable_type == "late":
         disable_range = range(2 * num_decoder_layers // 3, num_decoder_layers)  # Last 1/3
+    elif disable_type == "last_2":
+        disable_range = range(num_decoder_layers - 2, num_decoder_layers)  # Only last 2 layers
+    elif disable_type == "first_2":
+        disable_range = range(0, 2)  # Only last 2 layers
     else:
         return  # 'none' -> Do nothing
 
@@ -171,7 +176,7 @@ def main():
     parser.add_argument(
         "--freeze_layers",
         type=str,
-        choices=["none", "early", "middle", "late"],
+        choices=["none", "early", "middle", "late","last_2","first_2"],
         default="none",
         help="Freeze specific decoder layers: 'none' (default), 'early', 'middle', 'late'."
     )

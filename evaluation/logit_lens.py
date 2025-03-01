@@ -165,16 +165,27 @@ def save_comparison_results(similarities, base_model_text, lora_text,  base_top_
         "lora_top_k": lora_top_k
     }
 
-    filepath = os.path.join(filename)
-    with open(filename, "w") as f:
-        json.dump(results, f, ensure_ascii=False, indent=4)
-    print(f"Comparison results saved to {filepath}")
+    if os.path.exists(filename):
+        with open(filename, "r") as f:
+            try:
+                existing_data = json.load(f)
+                if not isinstance(existing_data, list):
+                    existing_data = [existing_data]  # Convert dict to list
+            except json.JSONDecodeError:
+                existing_data = []  # If JSON is corrupt, reset as empty list
+    else:
+        existing_data = []
 
+    existing_data.append(results)  
+
+    with open(filename, "w") as f:
+        json.dump(existing_data, f, ensure_ascii=False, indent=4)
+        
 # Example usage
 def main(args):
     base_model_analyzer = LogitLensAnalyzer() 
     lora_model_analyzer = LogitLensAnalyzer(peft_model=args.model_name)
-    input_text = "Жош байшингийн засварын ажлыг туршиж үзэхээр шийджээ. Тэрээр байшин худалдаж авахад 80,000 доллар зарцуулж, дараа нь засвар хийхэд 50,000 доллар зарцуулжээ. Ингэснээр байшингийн үнэ цэнийг 150% -иар нэмэгдүүлсэн. Тэр хэр их ашиг олсон бэ?"
+    input_text = "Надад 10 литр жүржийн шүүсний ундаа байгаа бөгөөд гуравны хоёр нь ус бөгөөд 15 литр хан боргоцойн шүүсний ундаа (тавны гурав нь ус) руу нэмэх гэж байсан ч ундаа асгахдаа нэг литр жүржийн шүүс асгасан."
     # Extract hidden states for both models while preserving autoregressive behavior
     base_hidden_states, base_generated_text = base_model_analyzer.extract_logits_autoregressive(input_text)
     lora_hidden_states, lora_generated_text = lora_model_analyzer.extract_logits_autoregressive(input_text)
