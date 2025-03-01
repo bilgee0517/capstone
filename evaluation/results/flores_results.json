@@ -4,6 +4,7 @@
         "BLEU": 44.05863767358846,
         "chrF++": 44.426092996545144,
         "METEOR": 0.5372574265497616,
+        "Morph": 0.7351783247067492,
         "Predictions": [
             "\"We have a 4-month-old chicken that has diabetes, but we have diabetes,\" he added.",
             "Dr. Ehud Ur, a professor of medicine at Dalhousie University in Halifax, Nova Scotia, and the head of the Clinical and Scientific Division of the Canadian Diabetes Federation warned that the study was early.",
@@ -1024,6 +1025,7 @@
         "BLEU": 45.29852871970909,
         "chrF++": 42.12320119195766,
         "METEOR": 0.5353819756338243,
+        "Morph": 0.7352355539435267,
         "Predictions": [
             "\"We have a 4-month-old baby with diabetes, but we have diabetes,\" he added.",
             "Dr. Ahed Ur, a professor of medicine at Dalhousie University in Halifax, Nova Scotia, and the head of the Canadian Diabetes Federation's clinical and scientific section warned that the study was early.",
@@ -2045,6 +2047,7 @@
         "BLEU": 32.666947590183604,
         "chrF++": 43.94407680041563,
         "METEOR": 0.5502417704474847,
+        "Morph": 0.7511730256970537,
         "Predictions": [
             "\"We have a 4-month-old chicken that has diabetes, but we have a 4-month-old chicken that has diabetes,\" he added.",
             "Dr. Ehud Ur, a professor of medicine at Dalhousie University in Halifax, Nova Scotia, and the head of the Canadian Diabetes Association's clinical and scientific section warned that the study was early.",
@@ -3066,6 +3069,7 @@
         "BLEU": 45.29852871970909,
         "chrF++": 42.12320119195766,
         "METEOR": 0.5485961640551139,
+        "Morph": 0.7488494010653156,
         "Predictions": [
             "\"We have a 4-month-old baby with diabetes, but we have diabetes,\" he added.",
             "Dr. Ehud Ur, a professor of medicine at Dalhousie University in Halifax, Nova Scotia, and the head of the Clinical and Scientific Division of the Canadian Diabetes Federation warned that the study was early.",
@@ -4087,6 +4091,7 @@
         "BLEU": 27.249745234058675,
         "chrF++": 38.39152687035999,
         "METEOR": 0.537744930616096,
+        "Morph": 0.7412281323668846,
         "Predictions": [
             "\"We have a four-month-old baby with diabetes, but we have diabetes\", he added.",
             "Dr. Ehud Ur, a professor of medicine at Dalhousie University in Halifax, Nova Scotia, and the head of the Canadian Diabetes Association's clinical and scientific section warned that the study was early.",
@@ -5108,7 +5113,9 @@
         "BLEU": 24.446151121745043,
         "chrF++": 29.048680224891466,
         "METEOR": 0.5563732059987538,
+        "Morph": 0.75609949554041,
         "Predictions": [
+            
             "\"We have a four-month-old cub who had leprosy but no diabetes\", she adds.",
             "Dr. Ehud Ur, a professor of medicine at Dalhousie University in Halifax, Nova Scotia, and the head of the clinical and scientific division of the Canadian Diabetes Association, warn that the research is still in its infancy.",
             "Like many other researchers, he was skeptical about the cure for diabetes, and he briefly noted that these findings were not relevant to patients with type 1 diabetes.",
