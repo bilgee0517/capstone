@@ -1,71 +1,64 @@
 # Cross-Lingual Post-Training Techniques for Low-Resource Languages
 
-## Project Title: Efficiency of Cross-Lingual Post-Training Techniques
-Author: Bilegjargal Altangerel
+**Author:** Bilegjargal Altangerel
 
 ## Project Overview
-This repository contains the code, datasets, analysis, and documentation for the Capstone Project titled Efficiency of Cross-Lingual Post-Training Techniques. The project investigates the efficiency of cross-lingual post-training techniques aimed at improving the linguistic adaptability and performance of pre-trained language models, specifically for low-resource languages like Mongolian.
+
+This repository contains the code, datasets, analysis, and documentation for the Capstone Project titled "Efficiency of Cross-Lingual Post-Training Techniques." The project investigates the efficiency of cross-lingual post-training techniques aimed at improving the linguistic adaptability and performance of pre-trained language models, specifically for low-resource languages like Mongolian.
 
 Through a comparative analysis of existing methodologies such as Adapter layers, BitFit, and prompt tuning, the project aims to enhance data efficiency and accuracy for multilingual models while reducing resource consumption. This research focuses on parameter-efficient fine-tuning strategies that optimize performance across languages with minimal computational overhead.
 
-# Table of Contents
-Project Overview
-Repository Structure
-Datasets
-Approach
-Installation
-Usage
-Contributing
-License
-References
+## Table of Contents
 
+- [Introduction](#introduction)
+- [Methodology](#methodology)
+  - [Data Collection](#data-collection)
+  - [Data Cleaning](#data-cleaning)
+  - [Model Training](#model-training)
+  - [Evaluation](#evaluation)
+- [Results](#results)
+- [Conclusion](#conclusion)
+- [Repository Structure](#repository-structure)
+- [Requirements](#requirements)
+- [Usage](#usage)
+- [Contact](#contact)
 
-``` bash 
+## Introduction
 
-├── data/
-│   ├── mn.txt/        # Mongolian dataset from CC-100
-│   └── processed/              # Preprocessed datasets
-├── src/
-│   ├── model_training/         # Code for training and fine-tuning models
-│   ├── post_training_methods/  # Implementations of post-training techniques (e.g., Adapter, BitFit)
-│   ├── evaluation/             # Evaluation scripts and metrics (e.g., BLEU, accuracy, perplexity)
-│   └── utils/                  # Utility scripts for data processing and embedding analysis
-├── results/
-│   ├── experimental_data/      # Results of experiments
-│   └── visualizations/         # Graphs and plots for result visualization
-├── docs/
-│   ├── paper/                  # Research paper draft and write-ups
-│   └── slides/                 # Project presentation slides
-├── README.md                   # Project overview
-└── requirements.txt            # Dependencies required for running the project
+The rapid development of natural language processing (NLP) has led to significant advancements in language modeling. However, low-resource languages often lag due to limited data availability and computational resources. This project addresses these challenges by exploring cross-lingual post-training techniques that enhance the performance of pre-trained language models on low-resource languages, with a focus on Mongolian.
 
-```
+## Methodology
 
-## Datasets
-This project uses the Mongolian text dataset sourced from the CC-100 dataset. The dataset comprises 397M words, and it has been preprocessed for tokenization, sentence segmentation, and embedding analysis.
+### Data Collection
 
- - Raw data: Located in data/cc100-mongolian/.
- - Processed data: Available in data/processed/ for ready-to-use experiments.
+- **Sources:** Collected Mongolian text data from various sources, including news articles, literature, and public domain texts.
+- **Scope:** Focused on diverse topics to ensure a comprehensive language representation.
 
-### Dataset Preprocessing
-The data was cleaned and tokenized using methods to remove noise (such as punctuation, URLs, and numbers). 
+### Data Cleaning
 
+- **Tools Used:** Utilized Jupyter notebooks (`data_cleaning.ipynb`) for data preprocessing.
+- **Processes:** Removed duplicates, handled missing values, and normalized text to improve data quality.
 
-## Approach
+### Model Training
 
-### Key Focus
-The project aims to optimize and compare the following post-training techniques:
+- **Techniques Compared:**
+  - **Adapter Layers:** Integrated adapter modules into the pre-trained model to facilitate language adaptation.
+  - **BitFit:** Applied bias-only fine-tuning to adjust specific model parameters.
+  - **Prompt Tuning:** Employed prompt-based methods to guide the model's language understanding.
+- **Implementation:** Conducted experiments using the `working.ipynb` notebook, detailing the training processes and configurations.
 
-- Adapter Layers: Lightweight modules added between transformer layers.
-- BitFit: A fine-tuning approach that updates only the bias terms.
-- Prompt Tuning: Fine-tuning a small number of additional tokens prepended to the input sequences.
-### The project involves:
+### Evaluation
 
-1. Comparative Analysis: Testing different post-training techniques on the CC-100 Mongolian dataset.
-2. Experimental Design: Evaluating model performance through metrics like BLEU score, perplexity, and accuracy.
-3. Embedding Adaptation: Exploring strategies to incorporate Mongolian language embeddings into pre-trained LLMs without retraining the entire embedding layer.
-### Techniques Implemented:
-- Adapter layers
-- BitFit
-- Prompt Tuning
-Evaluation Metrics: BLEU, perplexity, accuracy
+- **Metrics:** Evaluated model performance using perplexity scores.
+- **Script:** Used `perplexity.py` to calculate and analyze perplexity on the test datasets.
+
+## Results
+
+The experiments demonstrated varying degrees of improvement across the different fine-tuning techniques. Detailed results, including performance metrics and comparative analyses, are documented within the repository.
+
+## Conclusion
+
+The findings underscore the potential of parameter-efficient fine-tuning strategies in enhancing the performance of language models for low-resource languages. The comparative analysis provides insights into the trade-offs and benefits of each technique, guiding future research and application.
+
+## Repository Structure
+

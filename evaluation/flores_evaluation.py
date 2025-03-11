@@ -23,32 +23,28 @@ np.random.seed(42)
 random.seed(42)
 
 # Load the FLORES-200 dataset
-dataset = load_dataset("facebook/flores", "eng_Latn-khk_Cyrl", split="devtest")
+dataset = load_dataset("facebook/flores", "eng_Latn-khk_Cyrl", split="devtest", trust_remote_code=True)
 
-def disable_lora_layers(model, disable_type):
+import torch
+
+def disable_lora_layers(model, disable_layers):
     """
-    Disables LoRA adapters in a subset of decoder layers by setting LoRA weights to zero.
+    Disables LoRA adapters in the specified decoder layers by setting LoRA weights to zero.
 
     :param model: The LoRA fine-tuned model (PEFT)
-    :param disable_type: Which layers to disable LoRA for ('early', 'middle', 'late', or 'none')
+    :param disable_layers: List of layer indices to disable LoRA for
     """
     num_decoder_layers = len(model.base_model.model.model.decoder.layers)  # Get total decoder layers
 
-    if disable_type == "early":
-        disable_range = range(0, num_decoder_layers // 3)  # First 1/3 of layers
-    elif disable_type == "middle":
-        disable_range = range(num_decoder_layers // 3, 2 * num_decoder_layers // 3)  # Middle 1/3
-    elif disable_type == "late":
-        disable_range = range(2 * num_decoder_layers // 3, num_decoder_layers)  # Last 1/3
-    elif disable_type == "last_2":
-        disable_range = range(num_decoder_layers - 2, num_decoder_layers)  # Only last 2 layers
-    elif disable_type == "first_2":
-        disable_range = range(0, 2)  # Only last 2 layers
-    else:
-        return  # 'none' -> Do nothing
+    # Validate layer indices
+    disable_layers = [layer for layer in disable_layers if 0 <= layer < num_decoder_layers]
+    
+    if not disable_layers:
+        print("⚠️ No valid layers provided to disable LoRA.")
+        return
 
-    # 🔹 Step 1: Disable LoRA in Selected Decoder Layers
-    for layer_idx in disable_range:
+    # 🔹 Disable LoRA in Selected Decoder Layers
+    for layer_idx in disable_layers:
         for attn_type in ["self_attn", "encoder_attn"]:  # Self-attention + Encoder-Decoder attention
             for proj in ["q_proj", "v_proj"]:  # Attention projections
                 try:
@@ -63,8 +59,8 @@ def disable_lora_layers(model, disable_type):
 
                 except AttributeError:
                     print(f"⚠️ LoRA adapter not found in Layer {layer_idx}, {attn_type}.{proj} (Skipping)")
-
-    print(f"✅ Disabled LoRA in {disable_type} decoder layers (Layers: {list(disable_range)})")
+    
+    print(f"✅ Disabled LoRA in decoder layers: {disable_layers}")
 
 
 
@@ -145,6 +141,7 @@ def evaluate_model(args):
 
     results = {
         "Model Name": args.model_name,
+        "Encoder/Decoder": "decoder",
         "Frozen Layers": args.freeze_layers,
         "BLEU": bleu.score,
         "chrF++": chrf.score,
@@ -152,7 +149,7 @@ def evaluate_model(args):
         "Predictions": predictions
     }
 
-    output_file = "results/flores_results.json"
+    output_file = "results/layer_wise_flores_results.json"
     
     if os.path.exists(output_file):
         with open(output_file, "r") as f:
@@ -166,7 +163,6 @@ def evaluate_model(args):
     
     print(f"📂 Results saved to {output_file}")
 
-
 def main():
     parser = argparse.ArgumentParser(description="Evaluate a translation model using the FLORES-200 dataset.")
     parser.add_argument("--model_name", type=str, help="Name or path of the fine-tuned LoRA model.")
@@ -175,15 +171,14 @@ def main():
     parser.add_argument("--batch_size", type=int, default=1, help="Batch size for translation speed optimization.")
     parser.add_argument(
         "--freeze_layers",
-        type=str,
-        choices=["none", "early", "middle", "late","last_2","first_2"],
-        default="none",
-        help="Freeze specific decoder layers: 'none' (default), 'early', 'middle', 'late'."
+        type=int,
+        nargs='*',
+        default=[],
+        help="List of decoder layer indices to freeze (e.g., '0 2 5' to disable layers 0, 2, and 5)."
     )
     args = parser.parse_args()
 
     evaluate_model(args)
-
 
 if __name__ == "__main__":
     main()
