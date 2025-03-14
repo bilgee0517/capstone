@@ -95,8 +95,8 @@ def evaluate_model(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print("🚀 Loading NLLB model...")
-    base_model = AutoModelForSeq2SeqLM.from_pretrained("facebook/nllb-200-distilled-1.3B").to(device)
-    tokenizer = AutoTokenizer.from_pretrained("facebook/nllb-200-distilled-1.3B", src_lang=args.src_lang)
+    base_model = AutoModelForSeq2SeqLM.from_pretrained("facebook/nllb-200-3.3B").to(device)
+    tokenizer = AutoTokenizer.from_pretrained("facebook/nllb-200-3.3B", src_lang=args.src_lang)
 
     if args.model_name:
         model = PeftModel.from_pretrained(base_model, args.model_name).to(device)
