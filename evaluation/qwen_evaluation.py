@@ -142,7 +142,7 @@ def evaluate_model(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate the fine-tuned Qwen translation model on FLORES-200.")
-    parser.add_argument("--max_length", type=int, default=1024, help="Maximum length for generated translations.")
+    parser.add_argument("--max_length", type=int, default=500, help="Maximum length for generated translations.")
     parser.add_argument("--batch_size", type=int, default=1, help="Batch size for translation.")
     args = parser.parse_args()
     evaluate_model(args)
