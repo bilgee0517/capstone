@@ -4,9 +4,148 @@
 
 ## Project Overview
 
-This repository contains the code, datasets, analysis, and documentation for the Capstone Project titled "Efficiency of Cross-Lingual Post-Training Techniques." The project investigates the efficiency of cross-lingual post-training techniques aimed at improving the linguistic adaptability and performance of pre-trained language models, specifically for low-resource languages like Mongolian.
+This repository contains the implementation and analysis of cross-lingual post-training techniques for improving language model performance on low-resource languages, with a specific focus on Mongolian. The project explores various parameter-efficient fine-tuning methods to enhance model adaptability while minimizing computational requirements.
 
-Through a comparative analysis of existing methodologies such as Adapter layers, BitFit, and prompt tuning, the project aims to enhance data efficiency and accuracy for multilingual models while reducing resource consumption. This research focuses on parameter-efficient fine-tuning strategies that optimize performance across languages with minimal computational overhead.
+## Key Features
+
+- Implementation of multiple fine-tuning techniques:
+- Comprehensive evaluation framework
+- Data processing and cleaning pipelines
+- Perplexity-based performance analysis
+- Visualization tools for results analysis
+
+## Repository Structure
+
+```
+.
+├── evaluation/               # Evaluation scripts and results
+│   ├── results/             # Evaluation results
+│   ├── mm-eval/            # Multilingual evaluation tools
+│   ├── visualizations.ipynb # Results visualization
+│   ├── qwen_evaluation.py   # Qwen model evaluation
+│   └── flores_evaluation.py # FLORES benchmark evaluation
+├── utils/                   # Training and utility functions
+│   ├── finetune_qwen.py    # Qwen model fine-tuning
+│   ├── finetune_nllb.py    # NLLB model fine-tuning
+│   ├── train_lora.py       # LoRA training implementation
+│   ├── train_embed.py      # Embedding training
+│   ├── train_tokenizer.py  # Tokenizer training
+│   ├── continued_training.py # Continued pre-training
+│   └── translate_mongolian.py # Mongolian translation utilities
+├── data_cleaning.ipynb      # Data preprocessing notebook
+├── working.ipynb           # Experimentation notebook
+├── perplexity.py           # Perplexity calculation script
+├── requirements.txt        # Project dependencies
+└── Paper.pdf              # Project documentation
+```
+
+## Requirements
+
+The project requires Python 3.8+ and the following key dependencies:
+- PyTorch
+- Transformers
+- PEFT (Parameter-Efficient Fine-Tuning)
+- Datasets
+- NLTK
+- Pandas
+- NumPy
+
+For a complete list of dependencies, see `requirements.txt`.
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone [repository-url]
+cd [repository-name]
+```
+
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+### Data Preparation
+
+1. Run the data cleaning notebook:
+```bash
+jupyter notebook data_cleaning.ipynb
+```
+
+### Model Training
+
+The training scripts are located in the `utils/` directory. Each script serves a specific purpose:
+
+1. Fine-tune Qwen model:
+```bash
+python utils/finetune_qwen.py
+```
+
+2. Fine-tune NLLB model:
+```bash
+python utils/finetune_nllb.py
+```
+
+3. Train with LoRA:
+```bash
+python utils/train_lora.py
+```
+
+4. Train embeddings:
+```bash
+python utils/train_embed.py
+```
+
+5. Train tokenizer:
+```bash
+python utils/train_tokenizer.py
+```
+
+6. Continue pre-training:
+```bash
+python utils/continued_training.py
+```
+
+### Evaluation
+
+1. Run perplexity evaluation:
+```bash
+python perplexity.py
+```
+
+2. For comprehensive evaluation:
+```bash
+python evaluation/qwen_evaluation.py
+python evaluation/flores_evaluation.py
+```
+
+## Results
+
+The project evaluates model performance using:
+- Perplexity scores
+- FLORES benchmark metrics
+- Custom evaluation metrics for Mongolian language tasks
+
+Detailed results and visualizations can be found in the `evaluation/results/` directory.
+
+## Citation
+
+If you use this code in your research, please cite:
+```
+[Citation information from Paper.pdf]
+```
+
+## License
+
+[Specify license information]
+
+## Contact
+
+For questions and feedback, please contact:
+- Bilegjargal Altangerel
+- [Contact information]
 
 ## Table of Contents
 
@@ -41,16 +180,22 @@ The rapid development of natural language processing (NLP) has led to significan
 
 ### Model Training
 
-- **Techniques Compared:**
-  - **Adapter Layers:** Integrated adapter modules into the pre-trained model to facilitate language adaptation.
-  - **BitFit:** Applied bias-only fine-tuning to adjust specific model parameters.
-  - **Prompt Tuning:** Employed prompt-based methods to guide the model's language understanding.
-- **Implementation:** Conducted experiments using the `working.ipynb` notebook, detailing the training processes and configurations.
+- **Techniques Implemented:**
+  - **Qwen Fine-tuning:** Implementation of fine-tuning for the Qwen model (`utils/finetune_qwen.py`)
+  - **NLLB Fine-tuning:** Fine-tuning implementation for the NLLB model (`utils/finetune_nllb.py`)
+  - **LoRA Training:** Parameter-efficient fine-tuning using LoRA (`utils/train_lora.py`)
+  - **Embedding Training:** Custom embedding training (`utils/train_embed.py`)
+  - **Tokenizer Training:** Mongolian-specific tokenizer training (`utils/train_tokenizer.py`)
+  - **Continued Pre-training:** Additional pre-training steps (`utils/continued_training.py`)
+- **Implementation:** All training scripts are located in the `utils/` directory, with detailed configurations and training processes.
 
 ### Evaluation
 
 - **Metrics:** Evaluated model performance using perplexity scores.
-- **Script:** Used `perplexity.py` to calculate and analyze perplexity on the test datasets.
+- **Scripts:** 
+  - `perplexity.py` for perplexity calculation
+  - `evaluation/qwen_evaluation.py` for Qwen model evaluation
+  - `evaluation/flores_evaluation.py` for FLORES benchmark evaluation
 
 ## Results
 
